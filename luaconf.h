@@ -10,6 +10,10 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <math.h>
+#include "DEC64/dec64.h"
+#include "DEC64/dec64_math.h"
+#include "dec64_extra.h"
 
 
 /*
@@ -114,6 +118,7 @@
 #define LUA_FLOAT_FLOAT		1
 #define LUA_FLOAT_DOUBLE	2
 #define LUA_FLOAT_LONGDOUBLE	3
+#define LUA_FLOAT_DEC64		4
 
 #if defined(LUA_32BITS)		/* { */
 /*
@@ -144,7 +149,7 @@
 #endif
 
 #if !defined(LUA_FLOAT_TYPE)
-#define LUA_FLOAT_TYPE	LUA_FLOAT_DOUBLE
+#define LUA_FLOAT_TYPE	LUA_FLOAT_DEC64
 #endif
 
 /* }================================================================== */
@@ -433,8 +438,10 @@
 
 #define l_floor(x)		(l_mathop(floor)(x))
 
-#define lua_number2str(s,sz,n)  \
-	l_sprintf((s), sz, LUA_NUMBER_FMT, (LUAI_UACNUMBER)(n))
+/* #define lua_number2str(s,sz,n)  \ */
+/* 	l_sprintf((s), sz, LUA_NUMBER_FMT, (LUAI_UACNUMBER)(n)) */
+#define lua_number2str(s,sz,n) dec64_sprint(s, sz, n)
+
 
 /*
 @@ lua_numbertointeger converts a float number to an integer, or
@@ -464,6 +471,7 @@
 #define LUA_NUMBER_FMT		"%.7g"
 
 #define l_mathop(op)		op##f
+#define l_makenum(op)		op##f
 
 #define lua_str2number(s,p)	strtof((s), (p))
 
@@ -480,6 +488,7 @@
 #define LUA_NUMBER_FMT		"%.19Lg"
 
 #define l_mathop(op)		op##l
+#define l_makenum(op)		op##l
 
 #define lua_str2number(s,p)	strtold((s), (p))
 
@@ -495,8 +504,49 @@
 #define LUA_NUMBER_FMT		"%.14g"
 
 #define l_mathop(op)		op
+#define l_makenum(op)		op
 
 #define lua_str2number(s,p)	strtod((s), (p))
+
+#elif LUA_FLOAT_TYPE == LUA_FLOAT_DEC64
+
+#define LUA_NUMBER	dec64
+
+#define DEC64_RADIX			10
+#define DEC64_MANT_DIG		17
+#define DEC64_MAX_10_EXP	127
+
+#define l_mathlim(n)		(DEC64_##n)
+
+#define LUAI_UACNUMBER	dec64
+
+#define LUA_NUMBER_FRMLEN	""
+#define LUA_NUMBER_FMT		"%.14g"
+
+#define dec64_fabs dec64_abs
+#define dec64_fmod dec64_modulo
+#define dec64_pow dec64_raise
+#define dec64_ceil dec64_ceiling
+#define dec64_log10 dec64_log
+
+#define l_mathop(op)		dec64_##op
+#define l_makenum(num, exp)	(dec64_new(num, exp))
+
+#define lua_str2number(s,p)	dec64_strtod((s), (p))
+
+#define luai_numdiv(L,a,b)      dec64_divide(a, b)
+#define luai_numidiv(L,a,b)     ((void)L, dec64_floor(luai_numdiv(L,a,b)))
+#define luai_nummod(L,a,b,m) \
+  { (m) = l_mathop(fmod)(a,b); if (dec64_less(dec64_multiply(m, b), 0)) (m) = dec64_add(m, b); }
+#define luai_numpow(L,a,b)      ((void)L, l_mathop(pow)(a,b))
+#define luai_numadd(L,a,b)      dec64_add(a, b)
+#define luai_numsub(L,a,b)      dec64_subtract(a, b)
+#define luai_nummul(L,a,b)      dec64_multiply(a, b)
+#define luai_numunm(L,a)        dec64_neg(a)
+#define luai_numeq(a,b)         (dec64_equal(a, b) == DEC64_TRUE)
+#define luai_numlt(a,b)         dec64_less(a, b)
+#define luai_numle(a,b)         (dec64_less(a, b) || dec64_equal(a, b))
+#define luai_numisnan(a)        !dec64_is_any_nan(a)
 
 #else						/* }{ */
 
