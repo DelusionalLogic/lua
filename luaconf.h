@@ -544,9 +544,9 @@
 #define luai_nummul(L,a,b)      dec64_multiply(a, b)
 #define luai_numunm(L,a)        dec64_neg(a)
 #define luai_numeq(a,b)         (dec64_equal(a, b) == DEC64_TRUE)
-#define luai_numlt(a,b)         dec64_less(a, b)
-#define luai_numle(a,b)         (dec64_less(a, b) || dec64_equal(a, b))
-#define luai_numisnan(a)        !dec64_is_any_nan(a)
+#define luai_numlt(a,b)         (dec64_less(a, b) == DEC64_TRUE)
+#define luai_numle(a,b)         (dec64_less(a, b) == DEC64_TRUE || dec64_equal(a, b) == DEC64_TRUE)
+#define luai_numisnan(a)        (dec64_is_any_nan(a) == DEC64_TRUE)
 
 #else						/* }{ */
 
